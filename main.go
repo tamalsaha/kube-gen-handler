@@ -16,7 +16,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"github.com/appscode/kutil/apps/v1"
+	"k8s.io/api/core/v1"
 )
 
 func main() {
