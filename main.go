@@ -6,10 +6,9 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-
+	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	"github.com/appscode/go/log"
 	"github.com/tamalsaha/go-oneliners"
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -17,6 +16,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"github.com/appscode/kutil/apps/v1"
 )
 
 func main() {
@@ -43,6 +43,10 @@ func main() {
 				continue
 			}
 
+			if resource.Kind != "APIService" {
+				continue
+			}
+
 			fmt.Println(resourceList.GroupVersion, "|_|", resource.Name, "|_|", resource.SingularName, "|_|", resource.Kind)
 
 			gv, _ := schema.ParseGroupVersion(resourceList.GroupVersion)
@@ -56,8 +60,11 @@ func main() {
 	oneliners.FILE(restMapper.kindToPluralResource)
 	fmt.Println("__________________________________________________________________________________________________")
 
+	p2 := v1.Pod{}
+	fmt.Println(PkgPath(p2))
+
 	// restMapper.ResourceFor()
-	p := v1.Pod{}
+	p := v1beta1.APIService{}
 	fmt.Println(reflect.TypeOf(p).Name())
 	fmt.Println(reflect.TypeOf(p).PkgPath())
 

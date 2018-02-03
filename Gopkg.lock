@@ -449,6 +449,15 @@
   version = "v6.0.0"
 
 [[projects]]
+  name = "k8s.io/kube-aggregator"
+  packages = [
+    "pkg/apis/apiregistration",
+    "pkg/apis/apiregistration/v1beta1"
+  ]
+  revision = "23f9f59d663ea22b680310831a1b7297914b4ed3"
+  version = "kubernetes-1.9.0"
+
+[[projects]]
   branch = "master"
   name = "k8s.io/kube-openapi"
   packages = ["pkg/common"]
@@ -457,6 +466,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1ee6d1a6bc60f5c592e908087374b7f82dd62d94aeb8c45d49b34ba9c72e2c26"
+  inputs-digest = "6538cc27920abce03cee9f13b6907ea826cfed4e58e111673d84bac6ffcb7241"
   solver-name = "gps-cdcl"
   solver-version = 1
