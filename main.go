@@ -60,8 +60,17 @@ func main() {
 		if len(parts) < 2 {
 		}
 		group := parts[len(parts)-2]
+		if group == "core" {
+			group = ""
+		}
 		version := parts[len(parts)-1]
 		fmt.Println("group = ", group, "   version = ", version)
+
+		rs, err := restMapper.ResourcesFor(schema.GroupVersionKind{Group:group, Version:version, Kind:Kind(p)})
+		fmt.Println(err)
+		for _, r := range rs {
+			fmt.Println("|____ ", r)
+		}
 	}
 
 	m2, err := meta.Accessor(&p)
