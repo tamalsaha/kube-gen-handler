@@ -39,6 +39,8 @@ func main() {
 	resourceLists, err := kc.Discovery().ServerResources()
 	for _, resourceList := range resourceLists {
 		for _, resource := range resourceList.APIResources {
+			fmt.Println(resourceList.GroupVersion, "|_|", resource.Name, "|_|", resource.SingularName, "|_|", resource.Kind)
+
 			gv, _ := schema.ParseGroupVersion(resourceList.GroupVersion)
 			plural := gv.WithResource(resource.Name)
 			singular := gv.WithResource(resource.SingularName)
@@ -46,6 +48,9 @@ func main() {
 			restMapper.AddSpecific(gvk, plural, singular)
 		}
 	}
+
+	oneliners.FILE(restMapper.kindToPluralResource)
+	fmt.Println("__________________________________________________________________________________________________")
 
 	// restMapper.ResourceFor()
 	p := v1.Pod{}
@@ -66,7 +71,7 @@ func main() {
 		version := parts[len(parts)-1]
 		fmt.Println("group = ", group, "   version = ", version)
 
-		rs, err := restMapper.ResourcesFor(schema.GroupVersionKind{Group:group, Version:version, Kind:Kind(p)})
+		rs, err := restMapper.ResourcesFor(schema.GroupVersionKind{Group: group, Version: version, Kind: Kind(p)})
 		fmt.Println(err)
 		for _, r := range rs {
 			fmt.Println("|____ ", r)
@@ -177,7 +182,7 @@ func (m *DefaultRESTMapper) ResourcesFor(input schema.GroupVersionKind) ([]schem
 	case hasVersion:
 		for kind, plural := range m.kindToPluralResource {
 			if kind.Version == gvk.Version && kind.Kind == gvk.Kind {
-				oneliners.FILE(kind, plural)
+				oneliners.FILE(kind, "||", plural)
 				ret = append(ret, plural)
 			}
 		}
