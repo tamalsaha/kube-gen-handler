@@ -137,14 +137,15 @@ func (m *DefaultRESTMapper) AddSpecific(kind schema.GroupVersionKind, plural, si
 }
 
 func (m *DefaultRESTMapper) ResourcesFor(input schema.GroupVersionKind) ([]schema.GroupVersionResource, error) {
-	resource := coerceKindForMatching(input)
+	gvk := coerceKindForMatching(input)
+	oneliners.FILE(gvk)
 
-	hasKind := len(resource.Kind) > 0
-	hasGroup := len(resource.Group) > 0
-	hasVersion := len(resource.Version) > 0
+	hasKind := len(gvk.Kind) > 0
+	hasGroup := len(gvk.Group) > 0
+	hasVersion := len(gvk.Version) > 0
 
 	if !hasKind {
-		return nil, fmt.Errorf("a kind must be present, got: %v", resource)
+		return nil, fmt.Errorf("a kind must be present, got: %v", gvk)
 	}
 
 	var ret []schema.GroupVersionResource
@@ -152,9 +153,9 @@ func (m *DefaultRESTMapper) ResourcesFor(input schema.GroupVersionKind) ([]schem
 	case hasGroup:
 		// given a group, prefer an exact match.  If you don't find one, resort to a prefix match on group
 		foundExactMatch := false
-		requestedGroupKind := resource.GroupKind()
+		requestedGroupKind := gvk.GroupKind()
 		for kind, plural := range m.kindToPluralResource {
-			if kind.GroupKind() == requestedGroupKind && (!hasVersion || kind.Version == resource.Version) {
+			if kind.GroupKind() == requestedGroupKind && (!hasVersion || kind.Version == gvk.Version) {
 				foundExactMatch = true
 				ret = append(ret, plural)
 			}
@@ -167,7 +168,7 @@ func (m *DefaultRESTMapper) ResourcesFor(input schema.GroupVersionKind) ([]schem
 				if !strings.HasPrefix(kind.Group, requestedGroupKind.Group) {
 					continue
 				}
-				if kind.Kind == requestedGroupKind.Kind && (!hasVersion || kind.Version == resource.Version) {
+				if kind.Kind == requestedGroupKind.Kind && (!hasVersion || kind.Version == gvk.Version) {
 					ret = append(ret, plural)
 				}
 			}
@@ -175,21 +176,22 @@ func (m *DefaultRESTMapper) ResourcesFor(input schema.GroupVersionKind) ([]schem
 
 	case hasVersion:
 		for kind, plural := range m.kindToPluralResource {
-			if kind.Version == resource.Version && kind.Kind == resource.Kind {
+			if kind.Version == gvk.Version && kind.Kind == gvk.Kind {
+				oneliners.FILE(kind, plural)
 				ret = append(ret, plural)
 			}
 		}
 
 	default:
 		for kind, plural := range m.kindToPluralResource {
-			if kind.Kind == resource.Kind {
+			if kind.Kind == gvk.Kind {
 				ret = append(ret, plural)
 			}
 		}
 	}
 
 	if len(ret) == 0 {
-		return nil, fmt.Errorf("no matches for %v", resource)
+		return nil, fmt.Errorf("no matches for %v", gvk)
 	}
 
 	sort.Sort(resourceByPreferredGroupVersion{ret, m.defaultGroupVersions})
