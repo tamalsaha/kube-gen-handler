@@ -39,6 +39,10 @@ func main() {
 	resourceLists, err := kc.Discovery().ServerResources()
 	for _, resourceList := range resourceLists {
 		for _, resource := range resourceList.APIResources {
+			if strings.ContainsRune(resource.Name, '/') {
+				continue
+			}
+
 			fmt.Println(resourceList.GroupVersion, "|_|", resource.Name, "|_|", resource.SingularName, "|_|", resource.Kind)
 
 			gv, _ := schema.ParseGroupVersion(resourceList.GroupVersion)
