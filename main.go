@@ -9,6 +9,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"encoding/json"
 )
 
 func main() {
@@ -21,5 +22,6 @@ func main() {
 	}
 
 	kc := kubernetes.NewForConfigOrDie(config)
-	oneliners.FILE(kc.CoreV1().Nodes())
+	data, err := kc.Discovery().ServerResources()
+	oneliners.FILE(json.MarshalIndent(data, "", "  "))
 }
