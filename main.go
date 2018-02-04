@@ -6,9 +6,10 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
+
 	"github.com/appscode/go/log"
 	"github.com/tamalsaha/go-oneliners"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,7 +17,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"k8s.io/api/core/v1"
+	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 )
 
 func main() {
@@ -62,6 +63,8 @@ func main() {
 
 	p2 := v1.Pod{}
 	fmt.Println(PkgPath(p2))
+
+	fmt.Println("**************8888", reflect.Indirect(reflect.ValueOf(p2)).Type())
 
 	// restMapper.ResourceFor()
 	p := v1beta1.APIService{}
@@ -110,11 +113,7 @@ func PkgPath(v interface{}) string {
 }
 
 func Kind(v interface{}) string {
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
-	return val.Type().Name()
+	return reflect.Indirect(reflect.ValueOf(v)).Type().Name()
 }
 
 type DefaultRESTMapper struct {
@@ -152,56 +151,70 @@ func (m *DefaultRESTMapper) AddSpecific(kind schema.GroupVersionKind, plural, si
 	m.kindToPluralResource[kind] = plural
 }
 
-func (m *DefaultRESTMapper) ResourcesFor(input schema.GroupVersionKind) ([]schema.GroupVersionResource, error) {
+func (m *DefaultRESTMapper) ResourcesFor(input schema.GroupVersionKind) ([]schema.GroupVersionKind, error) {
 	gvk := coerceKindForMatching(input)
-	oneliners.FILE(gvk)
 
-	hasKind := len(gvk.Kind) > 0
+	hasResource := len(gvk.Kind) > 0
 	hasGroup := len(gvk.Group) > 0
 	hasVersion := len(gvk.Version) > 0
 
-	if !hasKind {
-		return nil, fmt.Errorf("a kind must be present, got: %v", gvk)
+	if !hasResource {
+		return nil, fmt.Errorf("a resource must be present, got: %v", gvk)
 	}
 
-	var ret []schema.GroupVersionResource
+	var ret []schema.GroupVersionKind
 	switch {
 	case hasGroup:
 		// given a group, prefer an exact match.  If you don't find one, resort to a prefix match on group
 		foundExactMatch := false
 		requestedGroupKind := gvk.GroupKind()
-		for kind, plural := range m.kindToPluralResource {
+		for plural := range m.pluralToSingular {
+			kind, ok := m.resourceToKind[plural]
+			if !ok {
+				continue
+			}
 			if kind.GroupKind() == requestedGroupKind && (!hasVersion || kind.Version == gvk.Version) {
 				foundExactMatch = true
-				ret = append(ret, plural)
+				ret = append(ret, kind)
 			}
 		}
 
 		// if you didn't find an exact match, match on group prefixing. This allows storageclass.storage to match
 		// storageclass.storage.k8s.io
 		if !foundExactMatch {
-			for kind, plural := range m.kindToPluralResource {
-				if !strings.HasPrefix(kind.Group, requestedGroupKind.Group) {
+			for plural := range m.pluralToSingular {
+				if !strings.HasPrefix(plural.Group, requestedGroupKind.Group) {
+					continue
+				}
+				kind, ok := m.resourceToKind[plural]
+				if !ok {
 					continue
 				}
 				if kind.Kind == requestedGroupKind.Kind && (!hasVersion || kind.Version == gvk.Version) {
-					ret = append(ret, plural)
+					ret = append(ret, kind)
 				}
 			}
 		}
 
 	case hasVersion:
-		for kind, plural := range m.kindToPluralResource {
+		for plural := range m.pluralToSingular {
+			kind, ok := m.resourceToKind[plural]
+			if !ok {
+				continue
+			}
 			if kind.Version == gvk.Version && kind.Kind == gvk.Kind {
-				oneliners.FILE(kind, "||", plural)
-				ret = append(ret, plural)
+				ret = append(ret, kind)
 			}
 		}
 
 	default:
-		for kind, plural := range m.kindToPluralResource {
+		for plural := range m.pluralToSingular {
+			kind, ok := m.resourceToKind[plural]
+			if !ok {
+				continue
+			}
 			if kind.Kind == gvk.Kind {
-				ret = append(ret, plural)
+				ret = append(ret, kind)
 			}
 		}
 	}
@@ -210,20 +223,20 @@ func (m *DefaultRESTMapper) ResourcesFor(input schema.GroupVersionKind) ([]schem
 		return nil, fmt.Errorf("no matches for %v", gvk)
 	}
 
-	sort.Sort(resourceByPreferredGroupVersion{ret, m.defaultGroupVersions})
+	sort.Sort(kindByPreferredGroupVersion{ret, m.defaultGroupVersions})
 	return ret, nil
 }
 
-func (m *DefaultRESTMapper) ResourceFor(input schema.GroupVersionKind) (schema.GroupVersionResource, error) {
+func (m *DefaultRESTMapper) ResourceFor(input schema.GroupVersionKind) (schema.GroupVersionKind, error) {
 	resources, err := m.ResourcesFor(input)
 	if err != nil {
-		return schema.GroupVersionResource{}, err
+		return schema.GroupVersionKind{}, err
 	}
 	if len(resources) == 1 {
 		return resources[0], nil
 	}
 
-	return schema.GroupVersionResource{}, &AmbiguousResourceError{PartialResource: input, MatchingResources: resources}
+	return schema.GroupVersionKind{}, &AmbiguousResourceError{PartialResource: input, MatchingResources: resources}
 }
 
 // coerceKindForMatching makes the resource lower case and converts internal versions to unspecified (legacy behavior)
@@ -234,14 +247,14 @@ func coerceKindForMatching(gvk schema.GroupVersionKind) schema.GroupVersionKind 
 	return gvk
 }
 
-type resourceByPreferredGroupVersion struct {
-	list      []schema.GroupVersionResource
+type kindByPreferredGroupVersion struct {
+	list      []schema.GroupVersionKind
 	sortOrder []schema.GroupVersion
 }
 
-func (o resourceByPreferredGroupVersion) Len() int      { return len(o.list) }
-func (o resourceByPreferredGroupVersion) Swap(i, j int) { o.list[i], o.list[j] = o.list[j], o.list[i] }
-func (o resourceByPreferredGroupVersion) Less(i, j int) bool {
+func (o kindByPreferredGroupVersion) Len() int      { return len(o.list) }
+func (o kindByPreferredGroupVersion) Swap(i, j int) { o.list[i], o.list[j] = o.list[j], o.list[i] }
+func (o kindByPreferredGroupVersion) Less(i, j int) bool {
 	lhs := o.list[i]
 	rhs := o.list[j]
 	if lhs == rhs {
@@ -249,7 +262,7 @@ func (o resourceByPreferredGroupVersion) Less(i, j int) bool {
 	}
 
 	if lhs.GroupVersion() == rhs.GroupVersion() {
-		return lhs.Resource < rhs.Resource
+		return lhs.Kind < rhs.Kind
 	}
 
 	// otherwise, the difference is in the GroupVersion, so we need to sort with respect to the preferred order
@@ -276,7 +289,7 @@ func (o resourceByPreferredGroupVersion) Less(i, j int) bool {
 type AmbiguousResourceError struct {
 	PartialResource schema.GroupVersionKind
 
-	MatchingResources []schema.GroupVersionResource
+	MatchingResources []schema.GroupVersionKind
 	MatchingKinds     []schema.GroupVersionKind
 }
 
