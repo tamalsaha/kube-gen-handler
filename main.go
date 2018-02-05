@@ -6,7 +6,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-
+	"k8s.io/client-go/kubernetes/scheme"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/appscode/go/log"
 	"github.com/tamalsaha/go-oneliners"
 	"k8s.io/api/core/v1"
@@ -18,9 +19,51 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
+	// "github.com/ghodss/yaml"
 )
 
 func main() {
+	masterURL := ""
+	kubeconfigPath := filepath.Join(homedir.HomeDir(), ".kube/config")
+
+	config, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfigPath)
+	if err != nil {
+		log.Fatalf("Could not get Kubernetes config: %s", err)
+	}
+
+	client, err := kubernetes.NewForConfig(config)
+	oneliners.FILE(err)
+
+	pods, err := client.CoreV1().Pods(v1.NamespaceAll).List(metav1.ListOptions{})
+	oneliners.FILE(err)
+	for _, p := range pods.Items {
+		fmt.Println(p.APIVersion, p.Name)
+	}
+
+	fmt.Println("----------------------------------------------------------------------")
+
+	expOpts := metav1.ExportOptions{
+		Export: true,
+	}
+	opts := metav1.ListOptions{}
+	result := &v1.PodList{}
+	err = client.CoreV1().RESTClient().Get().
+		Namespace(v1.NamespaceAll).
+		Resource("pods").
+		VersionedParams(&opts, scheme.ParameterCodec).
+		VersionedParams(&expOpts, scheme.ParameterCodec).
+		Do().
+		Into(result)
+	oneliners.FILE(err)
+	for _, p := range result.Items {
+		fmt.Println(p.APIVersion, p.Name)
+		//d, _ := yaml.Marshal(p)
+		//fmt.Println(string(d))
+		//fmt.Println("----------------------------------------------------------------------")
+	}
+}
+
+func main2() {
 	masterURL := ""
 	kubeconfigPath := filepath.Join(homedir.HomeDir(), ".kube/config")
 
