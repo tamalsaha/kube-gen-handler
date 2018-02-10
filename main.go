@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	// "github.com/ghodss/yaml"
+	"encoding/json"
 )
 
 func main0() {
@@ -73,7 +74,8 @@ func main() {
 	}
 
 	kc := kubernetes.NewForConfigOrDie(config)
-	data, _ := json.MarshalIndent(resourceList, "", "  ")
+	resourceLists, err := kc.Discovery().ServerResources()
+	data, _ := json.MarshalIndent(resourceLists, "", "  ")
 	oneliners.FILE(string(data))
 }
 
