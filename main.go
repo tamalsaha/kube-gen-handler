@@ -22,7 +22,7 @@ import (
 	// "github.com/ghodss/yaml"
 )
 
-func main() {
+func main0() {
 	masterURL := ""
 	kubeconfigPath := filepath.Join(homedir.HomeDir(), ".kube/config")
 
@@ -61,6 +61,20 @@ func main() {
 		//fmt.Println(string(d))
 		//fmt.Println("----------------------------------------------------------------------")
 	}
+}
+
+func main() {
+	masterURL := ""
+	kubeconfigPath := filepath.Join(homedir.HomeDir(), ".kube/config")
+
+	config, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfigPath)
+	if err != nil {
+		log.Fatalf("Could not get Kubernetes config: %s", err)
+	}
+
+	kc := kubernetes.NewForConfigOrDie(config)
+	data, _ := json.MarshalIndent(resourceList, "", "  ")
+	oneliners.FILE(string(data))
 }
 
 func main2() {
