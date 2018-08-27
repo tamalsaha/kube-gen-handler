@@ -34,20 +34,20 @@
   name = "github.com/tamalsaha/go-oneliners"
 
 [[constraint]]
-  version = "kubernetes-1.9.0"
+  version = "kubernetes-1.11.0"
   name = "k8s.io/api"
 
 [[constraint]]
-  version = "kubernetes-1.9.0"
+  version = "kubernetes-1.11.0"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
-  version = "kubernetes-1.9.0"
+  version = "kubernetes-1.11.0"
   name = "k8s.io/kube-aggregator"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "6.0.0"
+  version = "8.0.0"
 
 [prune]
   go-tests = true
