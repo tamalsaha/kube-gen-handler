@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/appscode/go/log"
 	"github.com/fatih/structs"
 	"github.com/tamalsaha/go-oneliners"
@@ -39,6 +40,11 @@ func main() {
 	}
 	var o1 interface{} = &deploys.Items[0]
 	var o2 ObservableObject = o1.(ObservableObject)
+
+	s2 := structs.New(o2)
+	for _, f := range s2.Fields() {
+		fmt.Println("**__ " + f.Name())
+	}
 
 	acc := o1.(metav1.Object)
 
